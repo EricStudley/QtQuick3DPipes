@@ -1,45 +1,43 @@
 #pragma once
 
 #include <QObject>
+#include <QRandomGenerator>
+
+static auto constexpr DIRECTION_COUNT = 6;
 
 class PipeEnums
 {
     Q_GADGET
 public:
-    enum SideEnum {
+    enum DirectionEnum {
         Up = 0,
-        Front,
+        Forward,
         Right,
         Back,
         Left,
-        Down
+        Down,
+        None
     };
-    Q_ENUM(SideEnum)
+    Q_ENUM(DirectionEnum)
 
-    static SideEnum oppositeSide(SideEnum side) {
-        switch (side) {
+    static DirectionEnum oppositeDirection(DirectionEnum direction) {
+        switch (direction) {
         case Up: return Down;
         case Down: return Up;
         case Left: return Right;
         case Right: return Left;
-        case Front: return Back;
-        case Back: return Front;
+        case Forward: return Back;
+        case Back: return Forward;
+        default: return None;
         }
     }
 
-    enum ColorEnum {
-        White = 0,
-        Green,
-        Red,
-        Blue,
-        Orange,
-        Yellow,
-    };
-    Q_ENUM(ColorEnum)
+    static DirectionEnum randomDirection() {
+        return static_cast<DirectionEnum>(QRandomGenerator::global()->bounded(DIRECTION_COUNT));
+    }
 
 private:
     explicit PipeEnums() = delete;
 };
 
-typedef PipeEnums::SideEnum Side;
-typedef PipeEnums::ColorEnum Color;
+typedef PipeEnums::DirectionEnum Direction;

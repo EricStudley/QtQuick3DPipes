@@ -7,19 +7,26 @@ import Pipe 1.0
 
 Window {
     id: window
+//    visibility: Window.FullScreen
+    flags: Qt.FramelessWindowHint
+    width: 1200
+    height: 900
     visible: true
-    width: 640
-    height: 480
     color: "black"
     title: qsTr("Windows 98 3D Pipes")
 
-    Shortcut { sequence: "Space"; onActivated: showBars = !showBars }
+    Shortcut {
+        sequence: "Space"
 
-    property bool showBars: true
+        onActivated: {
+            pipeModel.restartPipes()
+            perspectiveCamera.randomlyMoveCamera()
+        }
+    }
 
     View3D {
         id: view3D
-        anchors.fill: parent
+        anchors { fill: parent }
 
         environment: SceneEnvironment {
             id: sceneEnvironment
@@ -31,78 +38,29 @@ Window {
             temporalAAStrength: 2.0
         }
 
-        OrbitCameraController {
-            anchors.fill: parent
-            origin: scene
-            camera: perspectiveCamera
-        }
-
         PerspectiveCamera {
             id: perspectiveCamera
-            z: 5000
+            z: 4000
+
+            x: 1000
+            Component.onCompleted: lookAt(scene)
+
+
+//            Component.onCompleted: randomlyMoveCamera()
+
+            function randomlyMoveCamera() {
+                x = Math.random() * pipeModel.maxDistance
+                lookAt(scene)
+            }
         }
 
         DirectionalLight {
-            eulerRotation.x: -30
+            eulerRotation.x: -45
+            ambientColor: Qt.darker("slategrey")
         }
 
         Node {
             id: scene
-
-            //!EDGE
-            Repeater3D {
-                model: ListModel {
-                    ListElement { role_position: "-5000, -5000, -5000" }
-                    ListElement { role_position: "5000, -5000, -5000" }
-                    ListElement { role_position: "5000, 5000, -5000" }
-                    ListElement { role_position: "-5000, 5000, -5000" }
-                    ListElement { role_position: "-5000, 5000, 5000" }
-                    ListElement { role_position: "-5000, -5000, 5000" }
-                    ListElement { role_position: "5000, -5000, 5000" }
-                    ListElement { role_position: "5000, 5000, 5000" }
-                }
-
-                delegate: Model {
-                    source: "#Sphere"
-                    position: role_position
-                    scale: Qt.vector3d(1, 1, 1)
-                    materials: DefaultMaterial {
-                        diffuseColor: "red"
-                    }
-                }
-            }
-
-            Repeater3D {
-                model: ListModel {
-                    ListElement { role_position: "-5000, 0, -5000"; role_rotationAxis: "0, 0, 0" }
-                    ListElement { role_position: "5000, 0, -5000"; role_rotationAxis: "0, 0, 0" }
-                    ListElement { role_position: "0, -5000, -5000"; role_rotationAxis: "0, 0, 1" }
-                    ListElement { role_position: "0, 5000, -5000"; role_rotationAxis: "0, 0, 1" }
-
-                    ListElement { role_position: "-5000, 0, 5000"; role_rotationAxis: "0, 0, 0" }
-                    ListElement { role_position: "5000, 0, 5000"; role_rotationAxis: "0, 0, 0" }
-                    ListElement { role_position: "0, -5000, 5000"; role_rotationAxis: "0, 0, 1" }
-                    ListElement { role_position: "0, 5000, 5000"; role_rotationAxis: "0, 0, 1" }
-
-                    ListElement { role_position: "-5000, -5000, 0"; role_rotationAxis: "1, 0, 0" }
-                    ListElement { role_position: "-5000, 5000, 0"; role_rotationAxis: "1, 0, 0" }
-                    ListElement { role_position: "5000, -5000, 0"; role_rotationAxis: "1, 0, 0" }
-                    ListElement { role_position: "5000, 5000, 0"; role_rotationAxis: "1, 0, 0" }
-                }
-
-                delegate: Model {
-                    source: "#Cylinder"
-                    position: role_position
-                    scale: Qt.vector3d(1, 100, 1)
-                    rotation: Quaternion.fromAxisAndAngle(rotationAxis, 90)
-                    materials: DefaultMaterial {
-                        diffuseColor: "red"
-                    }
-
-                    property vector3d rotationAxis: role_rotationAxis
-                }
-            }
-            //!EDGE
 
             Repeater3D {
                 model: pipeModel
@@ -112,44 +70,58 @@ Window {
 
                     property vector3d index: role_index
 
+                    property int indexSize: pipeModel.maxDistance / pipeModel.maxIndex
+
                     function positionByIndex(index) {
-                        return ((index * 500) + 250) - 5000
+                        return ((index * indexSize) + (indexSize / 2)) - (pipeModel.maxDistance / 2)
                     }
 
                     Model {
+                        visible: !straightPipe()
                         source: "#Sphere"
-                        scale: role_sideList.length > 1 ? Qt.vector3d(1, 1, 1)
-                                                        : Qt.vector3d(1.5, 1.5, 1.5)
-                        materials: DefaultMaterial {
-                            diffuseColor: role_color
+                        scale: role_directionList.length > 1 ? Qt.vector3d(1, 1, 1)
+                                                             : Qt.vector3d(1.5, 1.5, 1.5)
+                        materials: PrincipledMaterial {
+                            baseColor: role_color
+                            metalness: 0.1
+                        }
+
+                        function contains(direction) {
+                            return role_directionList.indexOf(direction) >= 0
+                        }
+
+                        function straightPipe() {
+                            return (contains(Direction.Up) && contains(Direction.Down))
+                                    || (contains(Direction.Left) && contains(Direction.Right))
+                                    || (contains(Direction.Forward) && contains(Direction.Back))
                         }
                     }
 
                     Repeater3D {
-                        model: role_sideList
+                        model: role_directionList
 
                         delegate: Model {
-                            visible: showBars
                             source: "#Cylinder"
                             scale: Qt.vector3d(1, 2.5, 1)
                             position: switch (modelData) {
-                                      case Side.Up: return Qt.vector3d(0, pipeOffset, 0)
-                                      case Side.Front: return Qt.vector3d(0, 0, pipeOffset)
-                                      case Side.Right: return Qt.vector3d(pipeOffset, 0, 0)
-                                      case Side.Back: return Qt.vector3d(0, 0, -pipeOffset)
-                                      case Side.Left: return Qt.vector3d(-pipeOffset, 0, 0)
-                                      case Side.Down: return Qt.vector3d(0, -pipeOffset, 0)
+                                      case Direction.Up: return Qt.vector3d(0, pipeOffset, 0)
+                                      case Direction.Forward: return Qt.vector3d(0, 0, pipeOffset)
+                                      case Direction.Right: return Qt.vector3d(pipeOffset, 0, 0)
+                                      case Direction.Back: return Qt.vector3d(0, 0, -pipeOffset)
+                                      case Direction.Left: return Qt.vector3d(-pipeOffset, 0, 0)
+                                      case Direction.Down: return Qt.vector3d(0, -pipeOffset, 0)
                                       }
                             rotation: switch (modelData) {
-                                      case Side.Up: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 0), 90)
-                                      case Side.Front: return Quaternion.fromAxisAndAngle(Qt.vector3d(1, 0, 0), 90)
-                                      case Side.Right: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 1), 90)
-                                      case Side.Back: return Quaternion.fromAxisAndAngle(Qt.vector3d(1, 0, 0), 90)
-                                      case Side.Left: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 1), 90)
-                                      case Side.Down: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 0), 90)
+                                      case Direction.Up: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 0), 90)
+                                      case Direction.Forward: return Quaternion.fromAxisAndAngle(Qt.vector3d(1, 0, 0), 90)
+                                      case Direction.Right: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 1), 90)
+                                      case Direction.Back: return Quaternion.fromAxisAndAngle(Qt.vector3d(1, 0, 0), 90)
+                                      case Direction.Left: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 1), 90)
+                                      case Direction.Down: return Quaternion.fromAxisAndAngle(Qt.vector3d(0, 0, 0), 90)
                                       }
-                            materials: DefaultMaterial {
-                                diffuseColor: role_color
+                            materials: PrincipledMaterial {
+                                baseColor: role_color
+                                metalness: 0.1
                             }
 
                             readonly property real pipeOffset: (scale.y * 100) / 2
@@ -158,5 +130,11 @@ Window {
                 }
             }
         }
+    }
+
+    MouseArea {
+        anchors { fill: parent }
+
+//        onClicked: Qt.quit()
     }
 }

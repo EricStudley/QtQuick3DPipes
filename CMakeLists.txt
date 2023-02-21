@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 6.2 COMPONENTS Quick REQUIRED)
 
-qt_add_executable(appQtQuick3DPipes
+qt_add_executable(QtQuick3DPipes
     qml.qrc
     src/main.cpp
     src/PipeEnums.h
@@ -16,17 +16,9 @@ qt_add_executable(appQtQuick3DPipes
     src/PipeObject.cpp
     src/PipeModel.h
     src/PipeModel.cpp
-    src/PipeController.h
-    src/PipeController.cpp
 )
 
-qt_add_qml_module(appQtQuick3DPipes
-    URI QtQuick3DPipes
-    VERSION 1.0
-    QML_FILES qml/main.qml
-)
-
-set_target_properties(appQtQuick3DPipes PROPERTIES
+set_target_properties(QtQuick3DPipes PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -34,9 +26,9 @@ set_target_properties(appQtQuick3DPipes PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-target_link_libraries(appQtQuick3DPipes
+target_link_libraries(QtQuick3DPipes
     PRIVATE Qt6::Quick)
 
-install(TARGETS appQtQuick3DPipes
+install(TARGETS QtQuick3DPipes
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
