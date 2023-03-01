@@ -13,10 +13,7 @@ int main(int argc, char *argv[])
     PipeModel* pipeModel = new PipeModel(&app);
 
     qmlRegisterUncreatableType<PipeEnums>("Pipe", 1, 0, "Direction", "Error: Direction is an uncreatable enum type.");
-
-    QVector<QQmlContext::PropertyPair> contextProperties;
-    contextProperties.append(QQmlContext::PropertyPair{"pipeModel", QVariant::fromValue(pipeModel)});
-    engine.rootContext()->setContextProperties(contextProperties);
+    engine.rootContext()->setContextProperty("pipeModel", QVariant::fromValue(pipeModel));
 
     const QUrl url(QStringLiteral("qrc:/qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,

@@ -15,8 +15,7 @@ public:
         Right,
         Back,
         Left,
-        Down,
-        None
+        Down
     };
     Q_ENUM(DirectionEnum)
 
@@ -28,7 +27,6 @@ public:
         case Right: return Left;
         case Forward: return Back;
         case Back: return Forward;
-        default: return None;
         }
     }
 

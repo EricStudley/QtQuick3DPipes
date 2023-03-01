@@ -1,6 +1,7 @@
 #include "PipeModel.h"
 
 #include <QRandomGenerator>
+#include <QMetaEnum>
 
 static auto constexpr MAX_PIPES = 1000;
 static auto constexpr PIPE_UPDATE_TIME_MS = 50;
@@ -21,10 +22,10 @@ QVariant PipeModel::data(const QModelIndex &index, int role) const
     if (index.row() < 0 || index.row() >= m_pipeObjects.count())
         return {};
 
-    const PipeObject* object = m_pipeObjects[index.row()];
+    const PipeObject* object = m_pipeObjects.at(index.row());
 
-    if (role == IndexRole)
-        return object->index();
+    if (role == CellIndexRole)
+        return object->cellIndex();
     else if (role == ColorRole)
         return object->color();
     else if (role == DirectionListRole)
@@ -41,28 +42,19 @@ void PipeModel::restartPipes()
     m_pipeObjects.clear();
     endResetModel();
 
-    m_visitedIndexes.clear();
+    m_visitedCellIndexes.clear();
     m_movingPipes.clear();
 
-    int halfMaxIndex = m_maxIndex / 2;
-    QVector3D index = QVector3D(QRandomGenerator::global()->bounded(halfMaxIndex), QRandomGenerator::global()->bounded(halfMaxIndex), QRandomGenerator::global()->bounded(halfMaxIndex));
-    createNewPipe(index, Direction::Up);
-
-    index = QVector3D(halfMaxIndex + QRandomGenerator::global()->bounded(halfMaxIndex), QRandomGenerator::global()->bounded(halfMaxIndex), QRandomGenerator::global()->bounded(halfMaxIndex));
-    createNewPipe(index, Direction::Forward);
-
-    index =  QVector3D(QRandomGenerator::global()->bounded(halfMaxIndex), halfMaxIndex + QRandomGenerator::global()->bounded(halfMaxIndex), QRandomGenerator::global()->bounded(halfMaxIndex));
-    createNewPipe(index, Direction::Down);
-
-    index = QVector3D(QRandomGenerator::global()->bounded(halfMaxIndex), QRandomGenerator::global()->bounded(halfMaxIndex), halfMaxIndex + QRandomGenerator::global()->bounded(halfMaxIndex));
-    createNewPipe(index, Direction::Left);
+    for (int i = 0; i < m_pipeCount; i++) {
+        createNewPipe();
+    }
 
     m_timer->start(PIPE_UPDATE_TIME_MS);
 }
 
-int PipeModel::maxIndex() const
+int PipeModel::cellRowCount() const
 {
-    return m_maxIndex;
+    return m_cellRowCount;
 }
 
 int PipeModel::maxDistance() const
@@ -70,37 +62,81 @@ int PipeModel::maxDistance() const
     return m_maxDistance;
 }
 
+int PipeModel::pipeCount() const
+{
+    return m_pipeCount;
+}
+
+void PipeModel::setPipeCount(const int newPipeCount)
+{
+    if (m_pipeCount == newPipeCount || newPipeCount < 0)
+        return;
+
+    m_pipeCount = newPipeCount;
+
+    restartPipes();
+
+    emit pipeCountChanged();
+}
+
+void PipeModel::setCellRowCount(int newCellRowCount)
+{
+    if (m_cellRowCount == newCellRowCount)
+        return;
+
+    m_cellRowCount = newCellRowCount;
+
+    restartPipes();
+
+    emit cellRowCountChanged();
+}
+
+void PipeModel::setMaxDistance(int newMaxDistance)
+{
+    if (m_maxDistance == newMaxDistance)
+        return;
+
+    m_maxDistance = newMaxDistance;
+
+    restartPipes();
+
+    emit maxDistanceChanged();
+}
+
 QHash<int, QByteArray> PipeModel::roleNames() const
 {
     QHash<int, QByteArray> roles;
-    roles[IndexRole] = "role_index";
+    roles[CellIndexRole] = "role_cellIndex";
     roles[ColorRole] = "role_color";
     roles[DirectionListRole] = "role_directionList";
 
     return roles;
 }
 
-void PipeModel::createNewPipe(QVector3D index, Direction direction)
+void PipeModel::createNewPipe()
 {
     MovingPipe movingPipe;
-    movingPipe.direction = direction;
-    movingPipe.previousIndex = index;
-    movingPipe.nextIndex = nextIndexInDirection(movingPipe.previousIndex, movingPipe.direction);
+    movingPipe.direction = PipeEnums::randomDirection();
+    movingPipe.previousIndex = QVector3D(QRandomGenerator::global()->bounded(m_cellRowCount),
+                                         QRandomGenerator::global()->bounded(m_cellRowCount),
+                                         QRandomGenerator::global()->bounded(m_cellRowCount));
+    movingPipe.nextIndex = nextCellIndexInDirection(movingPipe.previousIndex, movingPipe.direction);
     movingPipe.color = QColor::fromRgb(QRandomGenerator::global()->generate());
 
     beginInsertRows(QModelIndex(), m_pipeObjects.count(), m_pipeObjects.count());
     m_pipeObjects.append(new PipeObject(movingPipe.previousIndex, movingPipe.color, { movingPipe.direction }));
     endInsertRows();
 
-    m_visitedIndexes.append(movingPipe.previousIndex);
+    m_visitedCellIndexes.append(movingPipe.previousIndex);
     m_movingPipes.append(movingPipe);
 }
 
-void PipeModel::movePipes() {
+void PipeModel::movePipes()
+{
     if (m_pipeObjects.count() < MAX_PIPES) {
 
         for (auto &movingPipe : m_movingPipes) {
-            movePipe(movingPipe, m_visitedIndexes);
+            movePipe(movingPipe, m_visitedCellIndexes);
         }
     }
     else {
@@ -108,23 +144,16 @@ void PipeModel::movePipes() {
     }
 }
 
-void PipeModel::movePipe(MovingPipe &movingPipe, QList<QVector3D> &visitedIndexes) {
-    Direction oppositeDirection = PipeEnums::oppositeDirection(movingPipe.direction);
+void PipeModel::movePipe(MovingPipe &movingPipe, QList<QVector3D> &visitedIndexes)
+{
+    QMap<Direction, QVector3D> validDirectionIndexes = allValidDirectionIndexes(movingPipe);
 
-    Direction nextDirection;
-    QVector3D nextIndex;
-    int count = 0;
+    if (validDirectionIndexes.isEmpty())
+        return;
 
-    do {
-        nextDirection = PipeEnums::randomDirection();
-        nextIndex = nextIndexInDirection(movingPipe.nextIndex, nextDirection);
-        count++;
-
-        if (count > 50) {
-            break;
-        }
-    }
-    while (nextDirection == oppositeDirection || visitedIndexes.contains(nextIndex) || nextIndex == movingPipe.nextIndex);
+    QList<Direction> validDirections = validDirectionIndexes.keys();
+    Direction nextDirection = validDirections.at(QRandomGenerator::global()->bounded(validDirections.count()));
+    QVector3D nextIndex = validDirectionIndexes.value(nextDirection);
 
     beginInsertRows(index(m_pipeObjects.length()), m_pipeObjects.length(), m_pipeObjects.length());
     m_pipeObjects.append(new PipeObject(movingPipe.nextIndex, movingPipe.color, { nextDirection, PipeEnums::oppositeDirection(movingPipe.direction)}));
@@ -134,10 +163,10 @@ void PipeModel::movePipe(MovingPipe &movingPipe, QList<QVector3D> &visitedIndexe
 
     movingPipe.direction = nextDirection;
     movingPipe.previousIndex = movingPipe.nextIndex;
-    movingPipe.nextIndex = nextIndexInDirection(movingPipe.previousIndex, movingPipe.direction);
+    movingPipe.nextIndex = nextCellIndexInDirection(movingPipe.previousIndex, movingPipe.direction);
 }
 
-QVector3D PipeModel::nextIndexInDirection(QVector3D currentIndex, Direction direction)
+QVector3D PipeModel::nextCellIndexInDirection(const QVector3D &currentIndex, const Direction &direction)
 {
     QVector3D nextIndex = currentIndex;
 
@@ -151,9 +180,9 @@ QVector3D PipeModel::nextIndexInDirection(QVector3D currentIndex, Direction dire
     default: break;
     }
 
-    if (nextIndex.x() >= m_maxIndex
-        || nextIndex.y() >= m_maxIndex
-        || nextIndex.z() >= m_maxIndex
+    if (nextIndex.x() >= m_cellRowCount
+        || nextIndex.y() >= m_cellRowCount
+        || nextIndex.z() >= m_cellRowCount
         || nextIndex.x() < 0
         || nextIndex.y() < 0
         || nextIndex.z() < 0) {
@@ -161,4 +190,32 @@ QVector3D PipeModel::nextIndexInDirection(QVector3D currentIndex, Direction dire
     }
 
     return nextIndex;
+}
+
+QMap<Direction, QVector3D> PipeModel::allValidDirectionIndexes(const MovingPipe &movingPipe)
+{
+    QMap<Direction, QVector3D> validDirectionIndexes;
+
+    QMetaEnum directionMetaEnum = QMetaEnum::fromType<Direction>();
+    QList<Direction> directionList;
+
+    for (int key = 0; key < directionMetaEnum.keyCount(); key++) {
+        directionList += static_cast<Direction>(directionMetaEnum.value(key));
+    }
+
+    Direction oppositeDirection = PipeEnums::oppositeDirection(movingPipe.direction);
+    directionList.removeAll(oppositeDirection);
+
+    for (const auto direction : directionList) {
+        const auto nextIndex = nextCellIndexInDirection(movingPipe.nextIndex, direction);
+
+        bool validDirectionIndex = nextIndex != movingPipe.nextIndex
+                                   && !m_visitedCellIndexes.contains(nextIndex);
+
+        if (validDirectionIndex) {
+            validDirectionIndexes.insert(direction, nextIndex);
+        }
+    }
+
+    return validDirectionIndexes;
 }

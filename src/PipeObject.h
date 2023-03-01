@@ -8,16 +8,16 @@ class PipeObject
 {
 public:
     PipeObject();
-    PipeObject(const QVector3D &index, const QColor &color, const QVariantList &directionList);
+    PipeObject(const QVector3D &cellIndex, const QColor &color, const QVariantList &directionList);
 
-    QVector3D index() const { return m_index; }
+    QVector3D cellIndex() const { return m_cellIndex; }
     QColor color() const { return m_color; }
     QVariantList directionList() const { return m_directionList; }
 
     void setDirectionList(const QVariantList &directionList) { m_directionList = directionList; }
 
 private:
-    QVector3D m_index;
+    QVector3D m_cellIndex;
     QColor m_color;
     QVariantList m_directionList;
 };

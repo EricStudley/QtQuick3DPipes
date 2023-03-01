@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/qml">
         <file alias="main.qml">qml/main.qml</file>
+        <file alias="CylinderPipe.qml">qml/CylinderPipe.qml</file>
+        <file alias="SpherePipe.qml">qml/SpherePipe.qml</file>
     </qresource>
 </RCC>
