@@ -16,9 +16,6 @@ struct MovingPipe {
 class PipeModel : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(int pipeCount READ pipeCount WRITE setPipeCount NOTIFY pipeCountChanged)
-    Q_PROPERTY(int cellRowCount READ cellRowCount WRITE setCellRowCount NOTIFY cellRowCountChanged)
-    Q_PROPERTY(int maxDistance READ maxDistance WRITE setMaxDistance NOTIFY maxDistanceChanged)
 
 public:
     explicit PipeModel(QObject *parent = nullptr);
@@ -32,7 +29,10 @@ public:
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
 
-    Q_INVOKABLE void restartPipes();
+    void createNewPipe();
+
+    void clearPipes();
+    void movePipes();
 
     // Q_PROPERTY READ
     int cellRowCount() const;
@@ -55,9 +55,6 @@ protected:
     QHash<int, QByteArray> roleNames() const;
 
 private:
-    void createNewPipe();
-
-    void movePipes();
     void movePipe(MovingPipe &movingPipe, QList<QVector3D> &visitedCellIndexes);
 
     QVector3D nextCellIndexInDirection(const QVector3D &index, const Direction &direction);

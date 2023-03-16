@@ -8,6 +8,7 @@ static auto constexpr DIRECTION_COUNT = 6;
 class PipeEnums
 {
     Q_GADGET
+
 public:
     enum DirectionEnum {
         Up = 0,

@@ -7,15 +7,13 @@ import Pipe 1.0
 
 Window {
     id: window
-//    visibility: Window.FullScreen
+    visibility: Window.FullScreen
     visible: true
-    width: 1200
-    height: 900
     color: "black"
     title: qsTr("Qt Quick 3D Pipes")
 
-    Shortcut { sequence: "Shift+="; onActivated: pipeModel.pipeCount++ }
-    Shortcut { sequence: "Shift+-"; onActivated: pipeModel.pipeCount-- }
+    Shortcut { sequence: "Shift+="; onActivated: pipeController.pipeCount++ }
+    Shortcut { sequence: "Shift+-"; onActivated: pipeController.pipeCount-- }
 
     View3D {
         id: view3D
@@ -44,7 +42,7 @@ Window {
 
         PerspectiveCamera {
             id: perspectiveCamera
-            z: pipeModel.maxDistance * 0.9
+            z: pipeController.maxDistance * 0.9
         }
 
         Node {
@@ -61,10 +59,10 @@ Window {
 
                     property vector3d cellIndex: role_cellIndex
 
-                    property int cellSize: pipeModel.maxDistance / pipeModel.cellRowCount
+                    property int cellSize: pipeController.maxDistance / pipeController.cellRowCount
 
                     function positionByCellIndex(cellIndex) {
-                        return ((cellIndex * cellSize) + (cellSize / 2)) - (pipeModel.maxDistance / 2)
+                        return ((cellIndex * cellSize) + (cellSize / 2)) - (pipeController.maxDistance / 2)
                     }
 
                     SpherePipe {
@@ -84,5 +82,11 @@ Window {
                 }
             }
         }
+    }
+
+    MouseArea {
+        anchors { fill: parent }
+
+        onClicked: Qt.quit()
     }
 }

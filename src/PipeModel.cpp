@@ -3,13 +3,8 @@
 #include <QRandomGenerator>
 #include <QMetaEnum>
 
-static auto constexpr MAX_PIPES = 1000;
-static auto constexpr PIPE_UPDATE_TIME_MS = 50;
-
 PipeModel::PipeModel(QObject *parent) : QAbstractListModel(parent)
 {
-    connect(m_timer, &QTimer::timeout, this, QOverload<>::of(&PipeModel::movePipes));
-    restartPipes();
 }
 
 int PipeModel::rowCount(const QModelIndex &) const
@@ -34,22 +29,14 @@ QVariant PipeModel::data(const QModelIndex &index, int role) const
     return {};
 }
 
-void PipeModel::restartPipes()
+void PipeModel::clearPipes()
 {
-    m_timer->stop();
-
     beginResetModel();
     m_pipeObjects.clear();
     endResetModel();
 
     m_visitedCellIndexes.clear();
     m_movingPipes.clear();
-
-    for (int i = 0; i < m_pipeCount; i++) {
-        createNewPipe();
-    }
-
-    m_timer->start(PIPE_UPDATE_TIME_MS);
 }
 
 int PipeModel::cellRowCount() const
@@ -74,8 +61,6 @@ void PipeModel::setPipeCount(const int newPipeCount)
 
     m_pipeCount = newPipeCount;
 
-    restartPipes();
-
     emit pipeCountChanged();
 }
 
@@ -86,8 +71,6 @@ void PipeModel::setCellRowCount(int newCellRowCount)
 
     m_cellRowCount = newCellRowCount;
 
-    restartPipes();
-
     emit cellRowCountChanged();
 }
 
@@ -97,8 +80,6 @@ void PipeModel::setMaxDistance(int newMaxDistance)
         return;
 
     m_maxDistance = newMaxDistance;
-
-    restartPipes();
 
     emit maxDistanceChanged();
 }
@@ -133,14 +114,8 @@ void PipeModel::createNewPipe()
 
 void PipeModel::movePipes()
 {
-    if (m_pipeObjects.count() < MAX_PIPES) {
-
-        for (auto &movingPipe : m_movingPipes) {
-            movePipe(movingPipe, m_visitedCellIndexes);
-        }
-    }
-    else {
-        restartPipes();
+    for (auto &movingPipe : m_movingPipes) {
+        movePipe(movingPipe, m_visitedCellIndexes);
     }
 }
 
@@ -181,11 +156,11 @@ QVector3D PipeModel::nextCellIndexInDirection(const QVector3D &currentIndex, con
     }
 
     if (nextIndex.x() >= m_cellRowCount
-        || nextIndex.y() >= m_cellRowCount
-        || nextIndex.z() >= m_cellRowCount
-        || nextIndex.x() < 0
-        || nextIndex.y() < 0
-        || nextIndex.z() < 0) {
+            || nextIndex.y() >= m_cellRowCount
+            || nextIndex.z() >= m_cellRowCount
+            || nextIndex.x() < 0
+            || nextIndex.y() < 0
+            || nextIndex.z() < 0) {
         return currentIndex;
     }
 
@@ -210,7 +185,7 @@ QMap<Direction, QVector3D> PipeModel::allValidDirectionIndexes(const MovingPipe 
         const auto nextIndex = nextCellIndexInDirection(movingPipe.nextIndex, direction);
 
         bool validDirectionIndex = nextIndex != movingPipe.nextIndex
-                                   && !m_visitedCellIndexes.contains(nextIndex);
+                && !m_visitedCellIndexes.contains(nextIndex);
 
         if (validDirectionIndex) {
             validDirectionIndexes.insert(direction, nextIndex);

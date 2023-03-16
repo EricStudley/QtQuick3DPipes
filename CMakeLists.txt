@@ -16,6 +16,8 @@ qt_add_executable(QtQuick3DPipes
     src/PipeObject.cpp
     src/PipeModel.h
     src/PipeModel.cpp
+    src/PipeController.h
+    src/PipeController.cpp
 )
 
 set_target_properties(QtQuick3DPipes PROPERTIES
